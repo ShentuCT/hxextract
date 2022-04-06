@@ -79,7 +79,7 @@ var (
 			Name: "qps",
 			Help: "Request reseived.",
 		},
-		[]string{"finname", "trigger", "export"},
+		[]string{"schema", "table", "trigger", "export"},
 	)
 
 	// 处理耗时分布
@@ -92,7 +92,7 @@ var (
 			Help:    "Cost of time for each request.",
 			Buckets: []float64{50, 500, 3000, 10000, 30000, 180000, 600000},
 		},
-		[]string{"finname", "trigger", "stage", "export"},
+		[]string{"schema", "table", "trigger", "stage", "export"},
 	)
 
 	// 错误数
@@ -101,7 +101,7 @@ var (
 			Name: "errors",
 			Help: "Errors occured.",
 		},
-		[]string{"trigger", "finname", "export", "statuscode"},
+		[]string{"trigger", "schema", "table", "export", "statuscode"},
 	)
 
 	// 处理函数
@@ -153,16 +153,16 @@ func TrafficMetricsAdd(source string, kb float64) {
 }
 
 // qps统计接口
-func QpsMetricsInc(finname string, trigger string, export string) {
-	qpsConterVec.WithLabelValues(finname, trigger, export).Inc()
+func QpsMetricsInc(schema string, table string, trigger string, export string) {
+	qpsConterVec.WithLabelValues(schema, table, trigger, export).Inc()
 }
 
 // 处理耗时统计接口
-func PerfBucketMetricsObserve(finname string, trigger string, stage string, export string, costMs float64) {
-	perfReqBucketVec.WithLabelValues(finname, trigger, stage, export).Observe(costMs)
+func PerfBucketMetricsObserve(schema string, table string, trigger string, stage string, export string, costMs float64) {
+	perfReqBucketVec.WithLabelValues(schema, table, trigger, stage, export).Observe(costMs)
 }
 
 // 错误统计接口
-func ErrorMetricsInc(trigger string, finname string, export string, errorcode string) {
-	errorConterVec.WithLabelValues(trigger, finname, export, errorcode).Inc()
+func ErrorMetricsInc(trigger string, schema string, table string, export string, errorcode string) {
+	errorConterVec.WithLabelValues(trigger, schema, table, export, errorcode).Inc()
 }

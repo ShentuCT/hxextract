@@ -21,6 +21,9 @@ type DB struct {
 	defaultOrm *gorm.DB
 	// 默认库名，用于存储数据信息
 	defaultSchema string
+	// 库表详细信息
+	gTableInfo  map[string]SchemaInfo
+	financeInfo FinnameInfo
 }
 
 func NewDB() (db *DB, cf func(), err error) {

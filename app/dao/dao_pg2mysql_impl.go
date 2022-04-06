@@ -34,6 +34,14 @@ type colValue struct {
 	colsScans []interface{} //存储每行的各个字段值，结构[]interface{}进行format
 }
 
+func (d *dao) pgCronInit() error {
+	// 表信息
+	if err := d.tableinfoDbLoad(); err != nil {
+		return err
+	}
+	return d.taskitemsDbLoad()
+}
+
 //ExportPgData
 //  @Description: 从pg导入数据
 //  @receiver d
@@ -41,30 +49,25 @@ type colValue struct {
 //  @param param
 //  @return error
 //
-func (d *dao) ExportPgData(finName string, param pg.QueryParam) error {
+func (d *dao) ExportPgData(param pg.QueryParam) error {
 	export := metrics.GetExportType(param.ProcType)
 	trigger := metrics.GetTriggerType(param.TriggerType)
-	metrics.QpsMetricsInc(finName, trigger, export)
+	metrics.QpsMetricsInc(param.SchemaName, param.TableName, trigger, export)
 	startTime := time.Now()
-	log.Log.Info("Start to export data from pg", zap.String("finname", finName), zap.Any("param", param))
-	tableName, schemaName, err := pgDao.GetTableInfo(finName)
+	log.Log.Info("Start to export data from pg", zap.Any("param", param))
+	db, err := d.DB.getConn(param.SchemaName)
 	if err != nil {
-		metrics.ErrorMetricsInc(trigger, finName, export, metrics.ErrorTablenfo)
-		return err
-	}
-	db, err := d.DB.getConn(schemaName)
-	if err != nil {
-		metrics.ErrorMetricsInc(trigger, finName, export, metrics.ErrorConn)
+		metrics.ErrorMetricsInc(trigger, param.SchemaName, param.TableName, export, metrics.ErrorConn)
 		return err
 	}
 	// 从pg导出数据
-	rows, err := pgDao.GetRows(finName, param)
+	rows, err := pgDao.GetRows(param)
 	if err != nil {
-		metrics.ErrorMetricsInc(trigger, finName, export, metrics.ErrorPg)
+		metrics.ErrorMetricsInc(trigger, param.SchemaName, param.TableName, export, metrics.ErrorPg)
 		return err
 	}
 	// 逐行校验并转成sql语句
-	sqlList, err := d.rows2sqls(pg.FinanceInfo{SchemaName: schemaName, FinName: finName, TableName: tableName}, rows, true)
+	sqlList, err := d.rows2sqls(pg.FinanceInfo{SchemaName: param.SchemaName, FinName: param.FinName, TableName: param.TableName}, rows, true)
 	// 通过sql语句更新mysql
 	var wg sync.WaitGroup
 	hasErr := false
@@ -87,10 +90,10 @@ func (d *dao) ExportPgData(finName string, param pg.QueryParam) error {
 	// 同步等待所有routine结束
 	wg.Wait()
 	if hasErr {
-		metrics.ErrorMetricsInc(trigger, finName, export, metrics.ErrorSink)
+		metrics.ErrorMetricsInc(trigger, param.SchemaName, param.TableName, export, metrics.ErrorSink)
 	}
 	timeCost := float64(time.Since(startTime).Milliseconds())
-	metrics.PerfBucketMetricsObserve(finName, trigger, metrics.StageAll, export, timeCost)
+	metrics.PerfBucketMetricsObserve(param.SchemaName, param.TableName, trigger, metrics.StageAll, export, timeCost)
 	return nil
 }
 

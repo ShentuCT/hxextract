@@ -18,11 +18,17 @@ type (
 	// QueryParam 适配老板财务数据导出模式的参数
 	QueryParam struct {
 		//ProcMethod int    //导出方式 0为直接入库，1为导出.sql文件
-		ProcType    int    //导出类型
-		StartDate   int    //开始时间
-		EndDate     int    //结束时间
-		CodeList    string //代码列表
-		TriggerType int    //触发方式，详见：pg.Trig*
+		TableName   string
+		SchemaName  string
+		FinName     string
+		StartDate   int
+		EndDate     int
+		CodeList    string
+		ProcType    int
+		TriggerType int //触发方式，详见：pg.Trig*
+		DsnInfo     string
+		ProcSql     string
+		SqlType     int //sql类型，详见：pg.Sql
 	}
 	ExportParam struct {
 		FinName string
@@ -30,22 +36,18 @@ type (
 	}
 )
 
-func (d *pgDao) GetRows(finName string, param QueryParam) (*sql.Rows, error) {
-	db, err := d.getFinDb(finName)
+func (d *pgDao) GetRows(param QueryParam) (*sql.Rows, error) {
+	db, err := d.getDsnDb(param.DsnInfo)
 	if err != nil {
 		return nil, err
 	}
-	procSql, flags, err := d.getProc(finName, param)
-	if err != nil {
-		return nil, err
-	}
-	return execFinSql(db, procSql, flags)
+	return execFinSql(db, param.ProcSql, param.SqlType)
 }
 
-func execFinSql(db *gorm.DB, sql string, flags sqlFlag) (*sql.Rows, error) {
+func execFinSql(db *gorm.DB, sql string, flag int) (*sql.Rows, error) {
 	log.Log.Info(fmt.Sprintf("exec sql: %s", sql))
 	// 处理存储过程
-	if flags.funcFlag {
+	if flag == SqlStoredProcedure {
 		// 多段连续要BEGIN END
 		// 获取存储过程的数据需要先执行生成临时缓存之后再通过fetch进一步获取数据
 		db.Exec("BEGIN;")
@@ -64,7 +66,7 @@ func execFinSql(db *gorm.DB, sql string, flags sqlFlag) (*sql.Rows, error) {
 		return db.Raw(strFetchSql).Rows()
 	}
 	// 处理 非存储过程 的select语句
-	if flags.indexFlag {
+	if flag == SqlIndex {
 		// sql需要开启索引
 		db.Exec("set enable_nestloop = on;")        //开启索引
 		defer db.Exec("set enable_nestloop = off;") //返回前关闭索引

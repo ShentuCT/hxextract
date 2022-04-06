@@ -1,5 +1,9 @@
 package orm
 
+import (
+	"time"
+)
+
 // topview库为
 
 // 表数据分市场说明：
@@ -21,6 +25,32 @@ type (
 	FinPrimaryKey struct {
 		Code     string
 		Datetime int
+	}
+	// TaskItems
+	TaskItems struct {
+		TaskId     int       `gorm:"type:int;column:id;primary_key"`
+		TableName  string    `gorm:"type:varchar(64);column:table_name"`
+		SchemaName string    `gorm:"type:varchar(20);column:schema_name"`
+		Export     int       `gorm:"type:int;column:export"`
+		Mtime      time.Time `gorm:"type:timestamp;column:mtime"`
+		Cron       string    `gorm:"type:text;column:cron"`
+	}
+	// TableInfo
+	TableInfo struct {
+		TableId    int       `gorm:"type:int;column:id;primary_key"`
+		TableName  string    `gorm:"type:varchar(64);column:table_name"`
+		SchemaName string    `gorm:"type:varchar(20);column:schema_name"`
+		Mtime      time.Time `gorm:"type:timestamp;column:mtime"`
+		FinName    string    `gorm:"type:varchar(64);column:fin_name"`
+		FinProc    string    `gorm:"type:text;column:fin_proc"`
+		AllProc    string    `gorm:"type:text;column:all_proc"`
+		RepProc    string    `gorm:"type:text;column:rep_proc"`
+		RealProc   string    `gorm:"type:text;column:real_proc"`
+		CodeProc   string    `gorm:"type:text;column:code_proc"`
+		Server     string    `gorm:"type:text;column:server"`
+		User       string    `gorm:"type:text;column:user_name"`
+		Passwd     string    `gorm:"type:text;column:passwd"`
+		Database   string    `gorm:"type:text;column:database"`
 	}
 )
 

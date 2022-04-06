@@ -2,6 +2,7 @@ package dao
 
 import (
 	"github.com/google/wire"
+	"github.com/pkg/errors"
 	"hxextract/app/dao/pg"
 )
 
@@ -55,7 +56,15 @@ func (d *dao) Start() error {
 }
 
 func (d *dao) Export(finName string, param pg.QueryParam) error {
-	return d.ExportPgData(finName, param)
+	// 现根据finname找到对应schema和table
+	var table TableInfo
+	ok := false
+	if table, ok = d.DB.financeInfo[finName]; !ok {
+		return errors.New("cant find finance by name")
+	}
+	param.TableName = table.tableName
+	param.SchemaName = table.schemaName
+	return d.ExportPgData(param)
 }
 
 func (d *dao) Close() {

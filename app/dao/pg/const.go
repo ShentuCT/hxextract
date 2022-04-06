@@ -33,3 +33,10 @@ const (
 	RTIME  = "rtime"
 	MARKET = "market"
 )
+
+// sql类型
+const (
+	SqlNormal = iota
+	SqlStoredProcedure
+	SqlIndex
+)
