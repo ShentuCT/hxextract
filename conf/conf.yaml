@@ -1,41 +1,1 @@
-
-# Ifind pg库配置
-Pgsql:
-  DefaultDSN: "host=127.0.0.1 port=5432 user=postgres password=postgres dbname=postgres"
-  QueryTimeout: 100000
-  MaxIdleConns: 10
-  MaxOpenConns: 500
-  LogLevel: info
-  SchemaName: topview
-  TaskInfo: taskitems
-  FinInfo: tableinfo
-  FieldInfo: cj_index
-  Fin2Table: basicinfo
-
-# MySql 库配置
-Mysql:
-  Address: "root:123456@tcp(127.0.0.1:3306)/"
-  Params: "charset=utf8mb4&parseTime=True&loc=Local"
-  READAddress:
-  DefaultDbname: topview
-  DbNames:
-    - shasefin
-  Active:
-  Idle:
-  RowLimit: 10000
-  IdleTimeout:
-  QueryTimeout:
-  ExecTimeout:
-  TranTimeout:
-  ExtraDatatype: 262763,131691
-
-# http配置
-Service:
-  HttpPort: 12345
-
-# 程序日志配置
-Log:
-  LogPath: ./log/extract.log
-  StatLogPath: ./log/stats_extract.log
-  GinLogPath: ./log/gin_extract.log
-  LogLevel: info
+# Ifind pg库配置Pgsql:  DefaultDSN: "host=192.168.159.128 port=5432 user=postgres password=postgres dbname=postgres"  QueryTimeout: 100000  MaxIdleConns: 10  MaxOpenConns: 500  LogLevel: info# MySql 库配置Mysql:  Address: "root:123456@tcp(192.168.159.128:3306)/"  Params: "charset=utf8mb4&parseTime=True&loc=Local"  DefaultDbname: topview  DbNames:    - indexfinance  Active:  Idle:  RowLimit: 10000  IdleTimeout:  QueryTimeout:  ExecTimeout:  TranTimeout:  ExtraDatatype: 262763,131691# http配置Service:  HttpPort: 12345# 程序日志配置Log:  LogPath: ./log/extract.log  StatLogPath: ./log/stats_extract.log  GinLogPath: ./log/gin_extract.log  LogLevel: info

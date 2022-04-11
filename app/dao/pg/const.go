@@ -13,11 +13,12 @@ const (
 
 // 导出方式，从0-5分别如下
 const (
-	OpAll   = iota //全量导出
-	OpBbrq         //按日期导出
-	OpRtime        //按rtime导出
-	OpReal         //按实时更新导出
-	OpCode         //按代码导出
+	OpAll     = iota //全量导出
+	OpBbrq           //按日期导出
+	OpRtime          //按rtime导出
+	OpReal           //按实时更新导出
+	OpCode           //按代码导出
+	OpCompare        //对比
 )
 
 // 触发方式，从0-1分别如下
@@ -32,6 +33,8 @@ const (
 	BBRQ   = "bbrq"
 	RTIME  = "rtime"
 	MARKET = "market"
+	MTIME  = "mtime"
+	ID     = "id"
 )
 
 // sql类型

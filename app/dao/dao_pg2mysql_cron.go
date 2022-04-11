@@ -14,14 +14,6 @@ type CronTaskInfo struct {
 }
 
 var (
-	cronParamRtime = pg.QueryParam{
-		ProcType:    pg.OpRtime,
-		TriggerType: pg.TrigCron,
-	}
-	cronParamBbrq = pg.QueryParam{
-		ProcType:    pg.OpBbrq,
-		TriggerType: pg.TrigCron,
-	}
 	// 最多重试三次，先拍个脑袋
 	retryCnt = 3
 )
@@ -36,7 +28,7 @@ func (d *CronTaskInfo) CronTasksExport() {
 		ProcType:    d.taskinfo.opType,
 		StartDate:   0,
 		EndDate:     0,
-		TriggerType: pg.OpRtime,
+		TriggerType: pg.TrigCron,
 	}
 	d.processFunc(param, retryCnt)
 	// 部分sql问题，通过bbrq再导一次
@@ -44,12 +36,6 @@ func (d *CronTaskInfo) CronTasksExport() {
 }
 
 func (d *dao) exportFinCron(param pg.QueryParam, retry int) {
-	sql, flag, err := d.getProc(param)
-	if err != nil {
-		return
-	}
-	param.ProcSql = sql
-	param.SqlType = flag
 	for i := 0; i < retry; i++ {
 		err := d.ExportPgData(param)
 		if err == nil {

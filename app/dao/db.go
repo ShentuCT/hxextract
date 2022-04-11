@@ -21,8 +21,9 @@ type DB struct {
 	defaultOrm *gorm.DB
 	// 默认库名，用于存储数据信息
 	defaultSchema string
-	// 库表详细信息
-	gTableInfo  map[string]SchemaInfo
+	// 库表详细信息，key是schema，value是schema下的所有表
+	gTableInfo map[string]SchemaInfo
+	// 财务文件名与mysql财务表的映射关系
 	financeInfo FinnameInfo
 }
 

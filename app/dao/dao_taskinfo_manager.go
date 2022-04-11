@@ -85,7 +85,7 @@ func int2Date(dateInt int) string {
 	var dayInt, monInt, yearInt int
 	if dateInt == 0 {
 		var mon time.Month
-		dayInt, mon, yearInt = time.Now().Date()
+		yearInt, mon, dayInt = time.Now().Date()
 		monInt = int(mon)
 	} else {
 		dayInt = dateInt % 100
@@ -121,6 +121,8 @@ func (d *dao) tableinfoDbLoad() error {
 		return errors.New("no table info found")
 	}
 	// 每个表缓存其对应的连接信息，要获取pg连接时，使用连接信息去map中查找
+	d.DB.financeInfo = make(FinnameInfo)
+	d.DB.gTableInfo = make(map[string]SchemaInfo)
 	for _, v := range result {
 		dsn := makeDSN(getInfo(v.Server, v.User, v.Passwd, v.Database))
 		tableinfo := TableInfo{
@@ -133,7 +135,11 @@ func (d *dao) tableinfoDbLoad() error {
 			finProc:    v.FinProc,
 			codeProc:   v.CodeProc,
 		}
+		if _, ok := d.DB.gTableInfo[v.SchemaName]; !ok {
+			d.DB.gTableInfo[v.SchemaName] = make(SchemaInfo)
+		}
 		d.DB.gTableInfo[v.SchemaName][v.TableName] = tableinfo
+		d.DB.financeInfo[v.FinName] = tableinfo
 	}
 	return nil
 }
@@ -150,6 +156,7 @@ func (d *dao) taskitemsDbLoad() error {
 		return errors.New("no task items found")
 	}
 	tasks := 0
+	cron.InitCron()
 	for _, v := range result {
 		taskitem := TaskItem{
 			tableName:  v.TableName,
@@ -167,17 +174,25 @@ func (d *dao) taskitemsDbLoad() error {
 				continue
 			}
 			taskname := taskitem.schemaName + taskitem.tableName
-			cron.AddTask(taskname, val, croninfo.CronTasksExport)
+			err := cron.AddTask(taskname, val, croninfo.CronTasksExport)
+			if err != nil {
+				log.Log.Warn(fmt.Sprintf("add task failed"),
+					zap.String("table", taskitem.tableName),
+					zap.String("schema", taskitem.schemaName),
+					zap.String("crontime", val))
+				continue
+			}
 			tasks++
 		}
 	}
+	cron.Start()
 	log.Log.Info("cronjob load finished", zap.Int("tasks", tasks))
 	return nil
 }
 
 func (d *dao) getProc(para pg.QueryParam) (string, int, error) {
 	flag := pg.SqlNormal
-	var schema SchemaInfo
+	schema := make(SchemaInfo)
 	var ok bool
 	if schema, ok = d.DB.gTableInfo[para.SchemaName]; !ok {
 		return "", flag, errors.New("can't find schema")

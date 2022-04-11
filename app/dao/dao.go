@@ -3,6 +3,7 @@ package dao
 import (
 	"github.com/google/wire"
 	"github.com/pkg/errors"
+	"hxextract/app/cron"
 	"hxextract/app/dao/pg"
 )
 
@@ -68,6 +69,7 @@ func (d *dao) Export(finName string, param pg.QueryParam) error {
 }
 
 func (d *dao) Close() {
+	cron.Stop()
 }
 
 func (d *dao) HealthCheck() error {
@@ -79,5 +81,10 @@ func (d *dao) HealthCheck() error {
 }
 
 func (d *dao) CompareTable(finName string, operation int) (int, error) {
-	return d.CompareAndDeleteMysqlRecord(finName, operation)
+	var table TableInfo
+	ok := false
+	if table, ok = d.DB.financeInfo[finName]; !ok {
+		return 0, errors.New("cant find finance by name")
+	}
+	return d.CompareAndUpdateMysql(table.schemaName, table.tableName, operation)
 }

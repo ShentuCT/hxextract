@@ -11,7 +11,6 @@ type (
 	FinanceInfo struct {
 		// 待导出财务文件基本信息
 		SchemaName string //模式名，和mysql中库名对应
-		FinName    string //财务文件名，和mysql库中表一一对应
 		TableName  string //mysql库表名，和财务文件名一一对应
 	}
 

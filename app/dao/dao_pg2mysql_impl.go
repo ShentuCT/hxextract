@@ -50,6 +50,40 @@ func (d *dao) pgCronInit() error {
 //  @return error
 //
 func (d *dao) ExportPgData(param pg.QueryParam) error {
+	if param.ProcType == pg.OpCompare {
+		record, err := d.CompareAndUpdateMysql(param.SchemaName, param.TableName, CmpAndDelete|CmpAndAdd)
+		if err != nil {
+			log.Log.Warn(fmt.Sprintf("cmp data failed"),
+				zap.String("schema", param.SchemaName),
+				zap.String("table", param.TableName),
+				zap.String("err", err.Error()))
+		} else {
+			log.Log.Info(fmt.Sprintf("cmp data successfully"),
+				zap.String("schema", param.SchemaName),
+				zap.String("table", param.TableName),
+				zap.Int("record", record))
+		}
+		return nil
+	}
+	// 找到对应的pg数据库信息
+	schema := make(SchemaInfo)
+	var ok bool
+	if schema, ok = d.DB.gTableInfo[param.SchemaName]; !ok {
+		return errors.New("can't find dsn")
+	}
+	var table TableInfo
+	if table, ok = schema[param.TableName]; !ok {
+		return errors.New("can't find dsn")
+	}
+	param.DsnInfo = table.dsnInfo
+	// 生成sql
+	sql, flag, err := d.getProc(param)
+	if err != nil {
+		return errors.New("can't build sql")
+	}
+	param.ProcSql = sql
+	param.SqlType = flag
+	// 获取mysql连接
 	export := metrics.GetExportType(param.ProcType)
 	trigger := metrics.GetTriggerType(param.TriggerType)
 	metrics.QpsMetricsInc(param.SchemaName, param.TableName, trigger, export)
@@ -67,7 +101,7 @@ func (d *dao) ExportPgData(param pg.QueryParam) error {
 		return err
 	}
 	// 逐行校验并转成sql语句
-	sqlList, err := d.rows2sqls(pg.FinanceInfo{SchemaName: param.SchemaName, FinName: param.FinName, TableName: param.TableName}, rows, true)
+	sqlList, err := d.rows2sqls(pg.FinanceInfo{SchemaName: param.SchemaName, TableName: param.TableName}, rows, true)
 	// 通过sql语句更新mysql
 	var wg sync.WaitGroup
 	hasErr := false
@@ -78,7 +112,9 @@ func (d *dao) ExportPgData(param pg.QueryParam) error {
 			result, unitErr := db.Exec(sqlStr)
 			if unitErr != nil {
 				hasErr = true
-				log.Log.Error(unitErr.Error())
+				log.Log.Error("replace mysql failed",
+					zap.String("sql", sqlStr),
+					zap.String("error", unitErr.Error()))
 			} else {
 				lastInsertId, _ := result.LastInsertId()
 				affectRows, _ := result.RowsAffected()
@@ -200,7 +236,7 @@ func (d *dao) getSqlHead(tableName string, cols []string) string {
 	sqlHead.WriteString(fmt.Sprintf("REPLACE INTO `%s`(", tableName))
 	lenCols := len(cols)
 	for i := 0; i < lenCols-1; i++ {
-		if cols[i] == pg.MARKET {
+		if cols[i] == pg.MARKET || cols[i] == pg.MTIME || cols[i] == pg.ID {
 			// 入库mysql时不需要market字段故跳过
 			continue
 		}
@@ -220,7 +256,7 @@ func (d *dao) getFormatStr(cols []string, schemaName string) (fmtStr string, err
 	schemaNames := []string{schemaName, "*"}
 	var colsWithoutMarket []string
 	for _, v := range cols {
-		if v != pg.MARKET {
+		if v != pg.MARKET && v != pg.MTIME && v != pg.ID {
 			colsWithoutMarket = append(colsWithoutMarket, v)
 		}
 	}
@@ -265,8 +301,9 @@ func (d *dao) getRowValue(c *colValue, fmtStr string, rows *sql.Rows, rules *[]v
 	zqdm := "default"
 	bbrq := "default"
 	check := valuate.GetCheckInst(rules)
+	length := 0
 	for i, j := 0, 0; i < len(c.values); i++ {
-		if c.colNames[i] == pg.MARKET {
+		if c.colNames[i] == pg.MARKET || c.colNames[i] == pg.MTIME || c.colNames[i] == pg.ID {
 			// 入库mysql时不需要市场号，continue跳过j++
 			continue
 		}
@@ -291,6 +328,7 @@ func (d *dao) getRowValue(c *colValue, fmtStr string, rows *sql.Rows, rules *[]v
 			}
 			c.colsScans[j] = value
 		}
+		length++
 		if check != nil {
 			check.TransformData(c.colNames[i], c.colTypes[i].ScanType(), c.colsScans[j])
 		}
@@ -309,7 +347,9 @@ func (d *dao) getRowValue(c *colValue, fmtStr string, rows *sql.Rows, rules *[]v
 			return "", err, operation
 		}
 	}
-	return fmt.Sprintf(fmtStr, c.colsScans...), err, valuate.SkipNoRow
+	colsScans := make([]interface{}, length)
+	copy(colsScans, c.colsScans)
+	return fmt.Sprintf(fmtStr, colsScans...), err, valuate.SkipNoRow
 }
 
 /*date2Int

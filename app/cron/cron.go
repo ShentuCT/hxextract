@@ -21,6 +21,7 @@ var manager Manager
 func InitCron() {
 	loc, _ := time.LoadLocation("Asia/Shanghai")
 	manager.cron = cron.New(cron.WithLocation(loc))
+	manager.scheduleDetail = make(map[string]CronEntryInfo)
 }
 
 func Start() {
@@ -34,8 +35,7 @@ func Stop() {
 func AddTask(task string, schedule string, cronFunc func()) error {
 	_, ok := manager.scheduleDetail[task]
 	if !ok {
-		var detail CronEntryInfo
-		manager.scheduleDetail[task] = detail
+		manager.scheduleDetail[task] = make(CronEntryInfo)
 	}
 	_, ok = manager.scheduleDetail[task][schedule]
 	if ok {

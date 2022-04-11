@@ -28,6 +28,7 @@ func (s *Service) Start() error {
 }
 
 func (s *Service) Close() {
+	s.dao.Close()
 }
 
 func (s *Service) Ping(ctx context.Context) error {

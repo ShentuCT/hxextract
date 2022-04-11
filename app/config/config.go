@@ -13,7 +13,6 @@ type (
 	MyConfig struct {
 		Address       string        `yaml:"Address"`       // write data source name. (dsn without database name
 		Params        string        `yaml:"Params"`        // DSN params
-		ReadDSN       []string      `yaml:"ReadDSN"`       // read data source name. (dsn without database name
 		DefaultDbname string        `yaml:"DefaultDbname"` // default mysql database name
 		DbNames       []string      `yaml:"DbNames"`       // all db names except default
 		Active        int           `yaml:"Active"`        // pool
@@ -33,12 +32,6 @@ type (
 		MaxIdleConns int    `yaml:"MaxIdleConns"` // max number of idles existed
 		MaxOpenConns int    `yaml:"MaxOpenConns"` // max number of idles opened
 		LogLevel     string `yaml:"LogLevel"`     // log level of pg connection
-		SchemaName   string `yaml:"SchemaName"`   // name of the schema in which all finance message tables are
-		TaskInfo     string `yaml:"TaskInfo"`     // name of the table which stores every export task`s message of finance
-		FinInfo      string `yaml:"FinInfo"`      // name of the table which stores every finance file`s message
-		FieldInfo    string `yaml:"FieldInfo"`    // name of the table which stores every finance field`s message
-		Fin2Table    string `yaml:"Fin2Table"`    // name of the table which stores corresponding tables for all finance files
-
 	}
 
 	ServiceConfig struct {
@@ -72,7 +65,7 @@ func ConfigureInit() {
 	// TODO: negt-go 配置模块接入
 	// 注释中为线上环境配置
 	//cfgFile = flag.String("f", "/usr/local/conf/conf.yaml", "config file path")
-	cfgFile = flag.String("f", "/Users/heqimin/Code/Go/finance/hxextract/conf/conf.yaml",
+	cfgFile = flag.String("f", "D:\\workspace\\go\\202203\\hxextract\\conf\\conf.yaml",
 		"config file path")
 	flag.Parse()
 	content, err := ioutil.ReadFile(*cfgFile)

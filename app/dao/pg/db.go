@@ -14,47 +14,21 @@ import (
 	"gorm.io/gorm/schema"
 	"hxextract/app/config"
 	"hxextract/app/log"
+	"sync"
 )
 
 type (
-
-	// TableConfig 适配老版财务数据配置表
-	TableConfig struct {
-		schemaName string //信息表所属模式
-		fieldInfo  string //存储财务文件字段信息的表名，默认为CJ_INDEX
-		fin2table  string //存储财务文件名与mysql表对应关系的表名
-	}
-
-	sqlFlag struct {
-		funcFlag  bool
-		indexFlag bool
+	// DB 连接信息管理
+	DB struct {
+		taskDB    map[string]*gorm.DB // 用dsn=>db形式存储pg的连接，以dsn为key
+		mutexTask sync.Mutex
 	}
 )
-
-//用于存储pg信息的包变量
-var (
-	dbTable = make(map[string]*gorm.DB) // 用dsn=>db形式存储pg的连接，以dsn为key
-)
-
-type DB struct {
-	tables TableConfig
-	baseDB *gorm.DB
-	taskDB map[string]*gorm.DB
-}
 
 func NewDB() (db *DB, cf func(), err error) {
 	log.Log.Info("init pg connection")
 	db = new(DB)
 	db.taskDB = make(map[string]*gorm.DB)
-	pgCfg := config.GetPgsql()
-	db.tables = TableConfig{
-		pgCfg.SchemaName,
-		pgCfg.FieldInfo,
-		pgCfg.Fin2Table,
-	}
-	if db.baseDB, err = getConn(pgCfg.DefaultDSN); err != nil {
-		return
-	}
 	return
 }
 
@@ -64,7 +38,9 @@ func NewDB() (db *DB, cf func(), err error) {
 //  @receiver d
 //
 func (d *DB) connectCheck() error {
-	for dsn, db := range dbTable {
+	d.mutexTask.Lock()
+	defer d.mutexTask.Unlock()
+	for dsn, db := range d.taskDB {
 		db_, err := db.DB()
 		if err == nil && db_.Ping() == nil {
 			continue
@@ -75,35 +51,23 @@ func (d *DB) connectCheck() error {
 			log.Log.Error("reconnect pg connection failed")
 			return err
 		}
-		dbTable[dsn] = db
-	}
-	return nil
-}
-
-//
-//  taskDbLoad
-//  @Description: 初始化pg导出任务，为所有导出任务所需的db库创建连接
-//  @receiver d
-//  @return error
-//
-func (d *DB) taskDbLoad(dsn string) error {
-	// 通过dsn判断是否需要新建连接，否则直接沿用
-	if _, ok := dbTable[dsn]; !ok {
-		db, err := getConn(dsn)
-		if err != nil {
-			return err
-		}
-		dbTable[dsn] = db
+		d.taskDB[dsn] = db
 	}
 	return nil
 }
 
 func (d *DB) getDsnDb(dsn string) (*gorm.DB, error) {
+	d.mutexTask.Lock()
+	defer d.mutexTask.Unlock()
 	if db, ok := d.taskDB[dsn]; ok {
 		return db, nil
 	}
-	// todo make err
-	return nil, nil
+	dbNew, err := getConn(dsn)
+	if err != nil {
+		return nil, nil
+	}
+	d.taskDB[dsn] = dbNew
+	return dbNew, nil
 }
 
 // getConn 获取pg库连接
