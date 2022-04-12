@@ -43,6 +43,6 @@ func (s *Service) HealthCheck() error {
 	return s.dao.HealthCheck()
 }
 
-func (s *Service) CompareTable(finName string, operation int) (int, error) {
+func (s *Service) CompareTable(finName string, operation int) (int, int, error) {
 	return s.dao.CompareTable(finName, operation)
 }

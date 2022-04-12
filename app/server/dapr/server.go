@@ -126,12 +126,12 @@ func compareHandler(c *gin.Context) {
 		c.String(400, "cmp handler recv no finame/operation")
 		return
 	}
-	rows, err := svc.CompareTable(finname, oper)
+	delete, insert, err := svc.CompareTable(finname, oper)
 	if err != nil {
 		log.Log.Error(fmt.Sprintf("compare error: %s", err.Error()), zap.String("finname", finname), zap.Int("operation", oper))
 		c.String(400, err.Error())
 	} else {
 		log.Log.Info(fmt.Sprintf("compare success"), zap.String("finname", finname), zap.Int("operation", oper))
-		c.String(0, fmt.Sprintf("compare succeed, delete %d rows", rows))
+		c.String(0, fmt.Sprintf("compare succeed, delete %d rows, insert %d rows", delete, insert))
 	}
 }

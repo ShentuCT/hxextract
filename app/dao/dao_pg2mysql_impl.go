@@ -51,7 +51,7 @@ func (d *dao) pgCronInit() error {
 //
 func (d *dao) ExportPgData(param pg.QueryParam) error {
 	if param.ProcType == pg.OpCompare {
-		record, err := d.CompareAndUpdateMysql(param.SchemaName, param.TableName, CmpAndDelete|CmpAndAdd)
+		deletRecord, insertRecord, err := d.CompareAndUpdateMysql(param.SchemaName, param.TableName, CmpAndDelete|CmpAndAdd)
 		if err != nil {
 			log.Log.Warn(fmt.Sprintf("cmp data failed"),
 				zap.String("schema", param.SchemaName),
@@ -61,8 +61,10 @@ func (d *dao) ExportPgData(param pg.QueryParam) error {
 			log.Log.Info(fmt.Sprintf("cmp data successfully"),
 				zap.String("schema", param.SchemaName),
 				zap.String("table", param.TableName),
-				zap.Int("record", record))
+				zap.Int("delete", deletRecord),
+				zap.Int("insert", insertRecord))
 		}
+		// 先不重试
 		return nil
 	}
 	// 找到对应的pg数据库信息

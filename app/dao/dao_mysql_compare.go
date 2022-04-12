@@ -17,14 +17,18 @@ const (
 )
 
 // 需要重点考虑请求pg与mysql超时、写mysql对比表超时，可能发生的删除不该删除数据的场景
-func (d *dao) CompareAndUpdateMysql(schemaName string, tableName string, operation int) (int, error) {
+func (d *dao) CompareAndUpdateMysql(schemaName string, tableName string, operation int) (int, int, error) {
 	err := d.CreateCompareTable(schemaName, tableName)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	// 进行对照操作
 	deleteRows := 0
-	zqdmProd, zqdmCmp, zqdmCommon := d.GetZqdmDiffer(tableName, schemaName)
+	insertRows := 0
+	zqdmProd, zqdmCmp, zqdmCommon, err := d.GetZqdmDiffer(tableName, schemaName)
+	if err != nil {
+		return 0, 0, err
+	}
 	// 生产库中比对比库多的证券代码
 	if zqdmProd != nil && len(*zqdmProd) > 0 {
 		// 先只输出到日志，不删除
@@ -47,19 +51,29 @@ func (d *dao) CompareAndUpdateMysql(schemaName string, tableName string, operati
 		// todo：补全数据
 		if operation&CmpAndAdd != 0 {
 			for _, val := range *zqdmCmp {
-				d.InsertMysqlRecordFromCompare(schemaName, tableName, val, nil)
+				insert, err := d.InsertMysqlRecordFromCompare(schemaName, tableName, val, nil)
+				if err != nil {
+					log.Log.Warn("compare insert failed",
+						zap.String("schema", schemaName),
+						zap.String("table", tableName),
+						zap.String("err", err.Error()))
+				}
+				insertRows += int(insert)
 			}
 		}
 	}
 	// 生产库与对比库一致的证券代码，需要对比判断报表日期
 	if zqdmCommon == nil {
-		return deleteRows, nil
+		return deleteRows, insertRows, nil
 	}
 	zqdmCommonCnt := len(*zqdmCommon)
 	if zqdmCommonCnt <= 0 {
-		return deleteRows, nil
+		return deleteRows, insertRows, nil
 	}
-	mapBbrqProd, mapBbrqCmp := d.GetBbrqDiffer(tableName, schemaName, zqdmCommon)
+	mapBbrqProd, mapBbrqCmp, err := d.GetBbrqDiffer(tableName, schemaName, zqdmCommon)
+	if err != nil {
+		return deleteRows, insertRows, err
+	}
 	if len(*mapBbrqProd) > 0 {
 		for key, val := range *mapBbrqProd {
 			log.Log.Info(fmt.Sprintf("bbrq compare need delete: zqdm=%s, bbrq=%v", key, val),
@@ -77,11 +91,18 @@ func (d *dao) CompareAndUpdateMysql(schemaName string, tableName string, operati
 				zap.String("table", tableName))
 			// todo：补全数据
 			if operation&CmpAndAdd != 0 {
-				d.InsertMysqlRecordFromCompare(schemaName, tableName, key, val)
+				insert, err := d.InsertMysqlRecordFromCompare(schemaName, tableName, key, val)
+				if err != nil {
+					log.Log.Warn("compare insert failed",
+						zap.String("schema", schemaName),
+						zap.String("table", tableName),
+						zap.String("err", err.Error()))
+				}
+				insertRows += int(insert)
 			}
 		}
 	}
-	return deleteRows, nil
+	return deleteRows, insertRows, nil
 }
 
 // 这里只负责往已经存在的表里塞入数据，不负责表的创建

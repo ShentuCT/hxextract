@@ -11,31 +11,31 @@ type (
 	MapZqdmBbrq map[string][]int32
 )
 
-func (d *dao) GetZqdmDiffer(tableName string, schemaName string) (*[]string, *[]string, *[]string) {
+func (d *dao) GetZqdmDiffer(tableName string, schemaName string) (*[]string, *[]string, *[]string, error) {
 	// 获取对比库证券代码
 	schemaCompare := "compare_" + schemaName
 	listZqdmCmp, err := d.GetZqdmList(tableName, schemaCompare)
 	if err != nil {
-		return nil, nil, nil
+		return nil, nil, nil, err
 	}
 	// 获取生产库证券代码
 	listZqdmProd, err := d.GetZqdmList(tableName, schemaName)
 	if err != nil {
-		return nil, nil, nil
+		return nil, nil, nil, err
 	}
 	return CompareTwoStringSlices(listZqdmProd, listZqdmCmp)
 }
 
-func (d *dao) GetBbrqDiffer(tableName string, schemaName string, codelist *[]string) (*MapZqdmBbrq, *MapZqdmBbrq) {
+func (d *dao) GetBbrqDiffer(tableName string, schemaName string, codelist *[]string) (*MapZqdmBbrq, *MapZqdmBbrq, error) {
 	// 获取库证券代码
 	schemaCompare := "compare_" + schemaName
 	mapProd, err := d.GetZqdmBbrqList(tableName, codelist, schemaName)
 	if err != nil {
-		return nil, nil
+		return nil, nil, err
 	}
 	mapCmp, err := d.GetZqdmBbrqList(tableName, codelist, schemaCompare)
 	if err != nil {
-		return nil, nil
+		return nil, nil, err
 	}
 	// 执行对比操作
 	// 对比得到不一致的数据
@@ -56,7 +56,7 @@ func (d *dao) GetBbrqDiffer(tableName string, schemaName string, codelist *[]str
 			mapCmpMore[k] = *bbrq2
 		}
 	}
-	return &mapProdMore, &mapCmpMore
+	return &mapProdMore, &mapCmpMore, nil
 }
 
 // 获取表内所有zqdm证券代码
@@ -85,7 +85,8 @@ func (d *dao) GetZqdmList(tableName string, schemaName string) (*[]string, error
 		time.Sleep(time.Duration(3) * time.Second)
 	}
 	if len(listZqdm) == 0 {
-		return nil, errors.New("get 0 rows of zqdm")
+		return nil, errors.New(fmt.Sprintf("get 0 rows of zqdm, schema=%s, table=%s",
+			schemaName, tableName))
 	}
 	return &listZqdm, nil
 }
@@ -145,7 +146,7 @@ func (d *dao) GetZqdmBbrqList(tableName string, sliceZqdm *[]string, schemaName 
 }
 
 // 对比两个slice，获取两者中不一致的元素
-func CompareTwoStringSlices(a, b *[]string) (*[]string, *[]string, *[]string) {
+func CompareTwoStringSlices(a, b *[]string) (*[]string, *[]string, *[]string, error) {
 	var slice1 []string
 	var slice2 []string
 	var slice3 []string
@@ -172,7 +173,7 @@ func CompareTwoStringSlices(a, b *[]string) (*[]string, *[]string, *[]string) {
 		j++
 	}
 
-	return &slice1, &slice2, &slice3
+	return &slice1, &slice2, &slice3, nil
 }
 
 // 对比两个slice，获取两者中不一致的元素

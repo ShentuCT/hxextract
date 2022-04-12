@@ -18,7 +18,7 @@ type Dao interface {
 	Close()
 	HealthCheck() error
 	// Ping(ctx context.Context) (err error)
-	CompareTable(finName string, operation int) (int, error)
+	CompareTable(finName string, operation int) (int, int, error)
 }
 
 type dao struct {
@@ -80,11 +80,11 @@ func (d *dao) HealthCheck() error {
 	return pgDao.HealthCheck()
 }
 
-func (d *dao) CompareTable(finName string, operation int) (int, error) {
+func (d *dao) CompareTable(finName string, operation int) (int, int, error) {
 	var table TableInfo
 	ok := false
 	if table, ok = d.DB.financeInfo[finName]; !ok {
-		return 0, errors.New("cant find finance by name")
+		return 0, 0, errors.New("cant find finance by name")
 	}
 	return d.CompareAndUpdateMysql(table.schemaName, table.tableName, operation)
 }
